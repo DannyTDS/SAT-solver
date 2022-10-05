@@ -1,7 +1,9 @@
 #! /usr/bin/env python3
 
 # Libraries
+import os
 import sys
+import csv
 import time
 
 class CNF:
@@ -38,10 +40,8 @@ def CNFObjectGenerator(filepath):
 def InputGenerator(cnf):
     for i in range(2 ** cnf.nVars):
         bin_str = bin(i)[2:].zfill(cnf.nVars)
-        comb = []
-        for n in bin_str:
-            comb.append(1) if int(n)==1 else comb.append(-1)
-        yield comb
+        # "0" maps to -1, "1" maps to 1
+        yield [int(n) * 2 - 1 for n in bin_str]
 
 
 def verify(wff, assignment):
@@ -62,18 +62,54 @@ def main():
         print("Too few arguments.")
         exit()
     filepath = sys.argv[1]
+    outputFilepath = filepath[:filepath.find(".")] + "-opt.csv"
     cnfGen = CNFObjectGenerator(filepath)
 
+    if os.path.exists(outputFilepath):
+        choice = input(f"Are you sure you want to overwrite results for {outputFilepath} (Y/N)? ")
+        if choice not in ("Y", "y"):
+            print("Program terminated.")
+            exit()
+
+    opt = open(outputFilepath, "w")
+    optWriter = csv.writer(opt, delimiter=",")
+
     for cnf in cnfGen:
+        # fetch assignments
         inputGen = InputGenerator(cnf)
-        print(f"\nVerifying {cnf.problemID}, with {cnf.nVars} vars...")
+        os.system('clear')
+        print(f"Verifying problem #{cnf.problemID}, with {cnf.nVars} vars...")
+
+        # start verifying
         startTime = time.time()
+        prediction = "U"
         for assignment in inputGen:
             if verify(cnf.wff, assignment):
+                prediction = "S"
+                satisfiedAssignment = assignment
                 break
         endTime = time.time()
+
+        # construct the output stats
         timeElapsed = f"{(endTime - startTime)*1000000:.2f}"
-        cnfStats = [cnf.problemID, cnf.nVars, cnf.nClauses, cnf.maxNLiterals, sum([len(wff) for wff in cnf.wff]), ]
+        totalNLiterals = sum([len(w) for w in cnf.wff])
+        if cnf.stdAnswer in ("S", "U"):
+            agreed = 1 if cnf.stdAnswer == prediction else -1
+        else:
+            agreed = 0
+        
+        cnfStats = [cnf.problemID, cnf.nVars, cnf.nClauses, cnf.maxNLiterals, totalNLiterals, prediction, agreed, timeElapsed]
+        
+        if prediction == "S":
+            # -1 maps to 0, 1 maps to 1, then turn whole thing into a string
+            satisfiedAssignment = ",".join([str((v + 1) // 2) for v in satisfiedAssignment])
+            cnfStats.append(satisfiedAssignment)
+        
+        # write stats to csv file
+        optWriter.writerow(cnfStats)
+    
+    opt.close()
+    print("Output completed.")
 
 if __name__ == "__main__":
     main()
