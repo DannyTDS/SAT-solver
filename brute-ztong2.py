@@ -18,19 +18,15 @@ class CNF:
 def CNFObjectGenerator(filepath):
     try:
         with open(filepath) as f:
-            wff = []
-            for line in f:
-                line = line.strip()
-                if line.startswith('c'):
-                    if wff:
-                        yield CNF(int(problemID), int(maxNLiterals), int(nVars), int(nClauses), stdAnswer, wff)
-                        wff = []
-                    _, problemID, maxNLiterals, stdAnswer = line.split(" ")
-                elif line.startswith('p'):
-                    _, _, nVars, nClauses = line.split(" ")
+            while True:
+                line = f.readline().strip()
+                if line and line.startswith('c'):
+                    _, problemID, maxNLiterals, stdAnswer = line.split()
+                    _, _, nVars, nClauses = f.readline().strip().split()
+                    wff = [[int(x) for x in f.readline().strip().split(',')[:-1]] for _ in range(int(nClauses))]
+                    yield CNF(int(problemID), int(maxNLiterals), int(nVars), int(nClauses), stdAnswer, wff)
                 else:
-                    literals = [int(x) for x in line.split(',')]
-                    wff.append(literals[:-1])
+                    break
     except FileNotFoundError:
         print(f"File not found: {filepath}")
         exit()
