@@ -1,6 +1,5 @@
 #! /usr/bin/env python3
 
-# Libraries
 import os
 import sys
 import csv
