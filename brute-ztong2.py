@@ -57,7 +57,8 @@ def main():
         print("Too few arguments.")
         exit()
     filepath = sys.argv[1]
-    outputFilepath = filepath[:filepath.find(".")] + "-opt.csv"
+    filename = filepath[:filepath.find(".")]
+    outputFilepath = filename + "-opt.csv"
     cnfGen = CNFObjectGenerator(filepath)
 
     if os.path.exists(outputFilepath):
@@ -68,6 +69,8 @@ def main():
 
     opt = open(outputFilepath, "w")
     optWriter = csv.writer(opt, delimiter=",")
+
+    problemCnt = satCnt = unsatCnt = hasAnsCnt = correctAnsCnt = 0
 
     for cnf in cnfGen:
         # fetch assignments
@@ -84,12 +87,15 @@ def main():
                 satisfiedAssignment = assignment
                 break
         endTime = time.time()
-
+        
         # construct the output stats
+        problemCnt += 1
+
         timeElapsed = f"{(endTime - startTime)*1000000:.2f}"
         totalNLiterals = sum([len(w) for w in cnf.wff])
         if cnf.stdAnswer in ("S", "U"):
             agreed = 1 if cnf.stdAnswer == prediction else -1
+            hasAnsCnt += 1
         else:
             agreed = 0
         
@@ -99,10 +105,19 @@ def main():
             # -1 maps to 0, 1 maps to 1, then turn whole thing into a string
             satisfiedAssignment = ",".join([str((v + 1) // 2) for v in satisfiedAssignment])
             cnfStats.append(satisfiedAssignment)
+            satCnt += 1
+        elif prediction == "U":
+            unsatCnt += 1
+        
+        if agreed == 1:
+            correctAnsCnt += 1
         
         # write stats to csv file
         optWriter.writerow(cnfStats)
     
+    # summary line
+    summaryStats = [filename, "ztong2", problemCnt, satCnt, unsatCnt, hasAnsCnt, correctAnsCnt]
+    optWriter.writerow(summaryStats)
     opt.close()
     print("Output completed.")
 
